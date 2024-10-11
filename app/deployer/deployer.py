@@ -4,21 +4,42 @@ import os
 import socket
 
 # Función para leer archivos JSON en la carpeta 'slice_manager/datos'
-def read_json_file(user_id: int, filename: str):
-    # Ajustar la ruta para apuntar a la carpeta 'slice_manager/datos'
-    file_path = os.path.join('..', 'slice_manager', 'data', filename)  # Ruta relativa a slice_manager/datos
+def read_json_file(user_id: int, filename: str, action: str):
+    """
+    Lee un archivo JSON desde la carpeta slice_manager/data, añade un campo 'action' a las VMs
+    con el valor proporcionado, y devuelve el JSON modificado.
+    
+    Args:
+        user_id (int): El ID del usuario que está solicitando el archivo.
+        filename (str): El nombre del archivo JSON.
+        action (str): El valor de la acción ('crear', 'eliminar', 'info', etc.).
+    
+    Returns:
+        dict: El JSON modificado con la acción aplicada a cada VM, o un error si ocurre algún problema.
+    """
+    # Ajustar la ruta para apuntar a la carpeta 'slice_manager/data'
+    file_path = os.path.join('..', 'slice_manager', 'data', filename)  # Ruta relativa a slice_manager/data
 
     if not os.path.exists(file_path):
         return {"error": f"El archivo {filename} no existe en la carpeta slice_manager/datos."}
 
     try:
+        # Leer el archivo JSON
         with open(file_path, "r") as f:
-            data = json.load(f)  # Leer el archivo JSON
-            print(f"Contenido del archivo {filename}: {data}")  # Imprimir el contenido
-            return data  # Devolver el contenido como respuesta
-    except Exception as e:
-        return {"error": f"Error al leer el archivo {filename}: {str(e)}"}
+            data = json.load(f)  # Cargar el archivo JSON
+            
 
+            # Modificar el archivo JSON para agregar "action" con el valor proporcionado a cada VM
+            for vm in data.get("vms", []):  # Iterar sobre las VMs si existen
+                vm["action"] = action  # Añadir el campo 'action' con el valor que recibe la función
+
+          
+            # Devolver el JSON modificado
+            return data
+
+    except Exception as e:
+        return {"error": f"Error al leer o modificar el archivo {filename}: {str(e)}"}
+    
 
 def send_json_to_worker(ip_worker, data):
     try:
@@ -40,11 +61,8 @@ def deploy_vms_to_workers(payload):
 
     for index, vm in enumerate(payload['vms']):
         worker_ip = workers_ips[index % num_workers]
-        print(f"Enviando {vm['name']} al worker con IP {worker_ip}")
-
+        
         result = send_json_to_worker(worker_ip, vm)
-        print(f"Resultado del despliegue en {worker_ip}: {result}")
-
         if "Error" in result:
             success = False  # Cambia a falso si algún worker reporta un error
 
