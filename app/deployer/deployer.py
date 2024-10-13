@@ -57,13 +57,70 @@ def send_json_to_worker(ip_worker, data):
 def deploy_vms_to_workers(payload):
     workers_ips = ['10.0.0.30', '10.0.0.40', '10.0.0.50']
     num_workers = len(workers_ips)
-    success = True  # Asume inicialmente que todo es exitoso
+    results = []  # Almacena los resultados de cada worker
 
     for index, vm in enumerate(payload['vms']):
         worker_ip = workers_ips[index % num_workers]
         
         result = send_json_to_worker(worker_ip, vm)
+        results.append({"worker_ip": worker_ip, "result": result})  # Guarda el resultado con la IP del worker
+        
         if "Error" in result:
-            success = False  # Cambia a falso si algún worker reporta un error
+            return 500, results  # Devuelve inmediatamente con error y los resultados hasta ahora
 
-    return 200 if success else 500  # Devuelve 200 si todo es exitoso, de lo contrario 500
+    return 200, results  # Devuelve 200 si todo es exitoso, junto con todos los resultados
+
+
+
+
+
+def request_system_stats(ip):
+    try:
+        # Conéctate al daemon de monitoreo en worker (puerto 9999)
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_socket.connect((ip, 9999))  # Reemplaza con la IP real de worker
+
+        # Recibe la respuesta en formato JSON
+        response = client_socket.recv(4096).decode()
+        client_socket.close()
+
+        return json.loads(response)
+    
+    except ConnectionRefusedError:
+        return {"status": 400, "error": "No se pudo conectar al servidor de monitoreo."}
+    except socket.timeout:
+        return {"status": 500, "error": "El servidor no respondió a tiempo."}
+    except Exception as e:
+        return {"status": 500, "error": f"Error inesperado: {str(e)}"}
+
+def format_stats(stats):
+    # Verifica si el estado es 200, de lo contrario devuelve el mensaje de error
+    if stats.get("status") != 200:
+        return {
+            "status": stats.get("status", 500),
+            "error": stats.get("error", "Error desconocido")
+        }
+
+    # Formatea solo los datos relevantes cuando la respuesta es exitosa
+    resources = stats.get("resources", {})
+    uso_cpu = resources.get("cpu_usage", "N/D")
+    info_memoria = resources.get("memory_info", {})
+    uso_disco = resources.get("disk_usage", {})
+
+    stats_formateadas = {
+        "status": 200,
+        "uso_cpu": f"{uso_cpu}%",  # Uso de CPU en porcentaje
+        "memoria": {
+            "total": f"{info_memoria.get('total', 'N/D') / (1024 ** 3):.2f} GB",
+            "usada": f"{info_memoria.get('used', 'N/D') / (1024 ** 3):.2f} GB",
+            "disponible": f"{info_memoria.get('available', 'N/D') / (1024 ** 3):.2f} GB",
+            "porcentaje_usada": f"{info_memoria.get('percent', 'N/D')}%"
+        },
+        "disco": {
+            "usado": f"{uso_disco.get('used', 'N/D') / (1024 ** 3):.2f} GB",
+            "libre": f"{uso_disco.get('free', 'N/D') / (1024 ** 3):.2f} GB",
+            "porcentaje_usado": f"{uso_disco.get('percent', 'N/D')}%"
+        }
+    }
+
+    return stats_formateadas
