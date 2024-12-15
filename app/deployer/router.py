@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Path , HTTPException, Path, status
 from app.deployer.deployer import read_json_file ,deploy_vms_to_workers ,request_system_stats,format_stats
 from app.models.model import SystemStatsRequest
+from typing import Dict
 
 # Crear el router para gestionar los endpoints
 router = APIRouter()
@@ -28,6 +29,61 @@ async def deploy_topology(user_id: int, filename: str):
             raise HTTPException(status_code=500, detail=f"Error en el despliegue de VMs: {results}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/deploy_linux", status_code=200)
+async def deploy_topology(data: Dict):
+    """
+    Despliega la topología basada en el JSON recibido.
+
+    Args:
+        data (Dict): JSON importado que describe la topología.
+
+    Returns:
+        dict: Mensaje de éxito y resultados del despliegue.
+    """
+    action = "crear"
+    try:
+        # Aquí puedes validar o procesar el JSON si es necesario
+        # result_code, results = deploy_vms_to_workers(data)  # Pasa el JSON directamente
+        # if result_code == 200:
+        #     return {"message": "Despliegue completado con éxito", "results": results}
+        # else:
+        #     raise HTTPException(status_code=500, detail=f"Error en el despliegue de VMs: {results}")
+        print (data)
+
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+
+@router.post("/deploy_openstack", status_code=200)
+async def deploy_topology(data: Dict):
+    """
+    Despliega la topología basada en el JSON recibido.
+
+    Args:
+        data (Dict): JSON importado que describe la topología.
+
+    Returns:
+        dict: Mensaje de éxito y resultados del despliegue.
+    """
+    action = "crear"
+    try:
+        # Aquí puedes validar o procesar el JSON si es necesario
+        # result_code, results = deploy_vms_to_workers(data)  # Pasa el JSON directamente
+        # if result_code == 200:
+        #     return {"message": "Despliegue completado con éxito", "results": results}
+        # else:
+        #     raise HTTPException(status_code=500, detail=f"Error en el despliegue de VMs: {results}")
+        print (data)
+
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+
 
 
 @router.post("/eliminar/{user_id}/{filename}", status_code=200)
